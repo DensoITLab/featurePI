@@ -21,7 +21,6 @@ Training curves and evaluation results can be loaded using TensorBoard. TensorBo
 
 ## Citation
 WIP
-```
 
 ## Acknowledgement
 The code is based on the official implementation of [SAM: Sharpness-Aware Minimization for Efficiently Improving Generalization](https://github.com/google-research/sam).
