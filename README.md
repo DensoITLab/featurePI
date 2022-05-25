@@ -3,7 +3,9 @@ Official Implementation in JAX and Flax.
 arXiv: WIP
 
 ## Installation
-WIP
+```
+pip install -r requirements.txt
+```
 
 ## Training and Evaluation
 To train an ensemble of 10 WRN-16-4 using feature-WGD, run
