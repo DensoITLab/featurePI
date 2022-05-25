@@ -28,45 +28,67 @@ from tensorflow.io import gfile
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_enum('dataset', 'cifar10', [
-    'cifar10', 'cifar100', 'imagenet'
-], 'Name of the dataset.')
-flags.DEFINE_enum('model_name', 'WideResnet16-4', [
-    'Resnet18', 'Resnet34', 'Resnet50',
-    'Resnet20', 'Resnet32', 'Resnet44',
-    'WideResnet16-2', 'WideResnet16-4', 
-    'WideResnet16-8', 'WideResnet28-2', 
-    'WideResnet28-10', 'WideResnet40-4'
-], 'Name of the model to train.')
-flags.DEFINE_integer('num_epochs', 300,
-                     'How many epochs the model should be trained for.')
+flags.DEFINE_enum(
+    "dataset", "cifar10", ["cifar10", "cifar100", "imagenet"], "Name of the dataset."
+)
+flags.DEFINE_enum(
+    "model_name",
+    "WideResnet16-4",
+    [
+        "Resnet18",
+        "Resnet34",
+        "Resnet50",
+        "Resnet20",
+        "Resnet32",
+        "Resnet44",
+        "WideResnet16-2",
+        "WideResnet16-4",
+        "WideResnet16-8",
+        "WideResnet28-2",
+        "WideResnet28-10",
+        "WideResnet40-4",
+    ],
+    "Name of the model to train.",
+)
 flags.DEFINE_integer(
-    'batch_size', 128, 'Global batch size. If multiple '
-    'replicas are used, each replica will receive '
-    'batch_size / num_replicas examples. Batch size should be divisible by '
-    'the number of available devices.')
+    "num_epochs", 300, "How many epochs the model should be trained for."
+)
+flags.DEFINE_integer(
+    "batch_size",
+    128,
+    "Global batch size. If multiple "
+    "replicas are used, each replica will receive "
+    "batch_size / num_replicas examples. Batch size should be divisible by "
+    "the number of available devices.",
+)
 flags.DEFINE_enum(
-    'image_level_augmentations', 'basic',
-    ['none', 'basic', 'autoaugment'],
-    'Augmentations applied to the images. Should be `none` for '
-    'no augmentations, `basic` for the standard horizontal '
-    'flips and random crops, and `autoaugment` for the best '
-    'AutoAugment policy for cifar10. '
-    'For Imagenet, setting to autoaugment will use RandAugment.')
+    "image_level_augmentations",
+    "basic",
+    ["none", "basic", "autoaugment"],
+    "Augmentations applied to the images. Should be `none` for "
+    "no augmentations, `basic` for the standard horizontal "
+    "flips and random crops, and `autoaugment` for the best "
+    "AutoAugment policy for cifar10. "
+    "For Imagenet, setting to autoaugment will use RandAugment.",
+)
 flags.DEFINE_enum(
-    'batch_level_augmentations', 'none', ['none', 'cutout', 'mixup', 'mixcut'],
-    'Augmentations that are applied at the batch level. '
-    'Not used by Imagenet.')
+    "batch_level_augmentations",
+    "none",
+    ["none", "cutout", "mixup", "mixcut"],
+    "Augmentations that are applied at the batch level. " "Not used by Imagenet.",
+)
 flags.DEFINE_string(
-    'output_dir', 'results', 'Directory where the checkpoints and the tensorboard '
-    'records should be saved.')
+    "output_dir",
+    "results",
+    "Directory where the checkpoints and the tensorboard " "records should be saved.",
+)
 
 
 def main(_):
 
     tf.enable_v2_behavior()
     # make sure tf does not allocate gpu memory
-    tf.config.experimental.set_visible_devices([], 'GPU')
+    tf.config.experimental.set_visible_devices([], "GPU")
 
     tf.random.set_seed(FLAGS.run_seed)
 
@@ -84,18 +106,22 @@ def main(_):
     # output directory path so that each model has its own directory to save the
     # results in. We also add the `run_seed` which is "gridsearched" on to
     # replicate an experiment several times.
-    output_dir_suffix = os.path.join(FLAGS.dataset,
-                                        FLAGS.model_name,
-                                        'lr_' + str(FLAGS.learning_rate),
-                                        'Adam' if FLAGS.use_adam else 'SGD',
-                                        'wd_' + str(FLAGS.weight_decay),
-                                        'particle_' + str(FLAGS.num_particles),
-                                        'seed_' + str(FLAGS.run_seed))      
-    
+    output_dir_suffix = os.path.join(
+        FLAGS.dataset,
+        FLAGS.model_name,
+        "lr_" + str(FLAGS.learning_rate),
+        "Adam" if FLAGS.use_adam else "SGD",
+        "wd_" + str(FLAGS.weight_decay),
+        "particle_" + str(FLAGS.num_particles),
+        "seed_" + str(FLAGS.run_seed),
+    )
+
     output_dir_suffix = os.path.join(output_dir_suffix, FLAGS.method)
 
-    if FLAGS.method == 'feature_wgd':
-        output_dir_suffix = os.path.join(output_dir_suffix, FLAGS.prior, 'scale_' + str(FLAGS.prior_scale))
+    if FLAGS.method == "feature_wgd":
+        output_dir_suffix = os.path.join(
+            output_dir_suffix, FLAGS.prior, "scale_" + str(FLAGS.prior_scale)
+        )
 
     output_dir = os.path.join(FLAGS.output_dir, output_dir_suffix)
 
@@ -105,63 +131,77 @@ def main(_):
     num_devices = jax.local_device_count() * jax.process_count()
     assert FLAGS.batch_size % num_devices == 0
     local_batch_size = FLAGS.batch_size // num_devices
-    info = 'Total batch size: {} ({} x {} replicas)'.format(
-        FLAGS.batch_size, local_batch_size, num_devices)
+    info = "Total batch size: {} ({} x {} replicas)".format(
+        FLAGS.batch_size, local_batch_size, num_devices
+    )
     logging.info(info)
 
-    if FLAGS.dataset == 'cifar10':
+    if FLAGS.dataset == "cifar10":
         image_size = None
         dataset_source = dataset_source_lib.Cifar10(
             FLAGS.batch_size // jax.process_count(),
             FLAGS.image_level_augmentations,
             FLAGS.batch_level_augmentations,
-            image_size=image_size)
-    elif FLAGS.dataset == 'cifar100':
+            image_size=image_size,
+        )
+    elif FLAGS.dataset == "cifar100":
         image_size = None
         dataset_source = dataset_source_lib.Cifar100(
             FLAGS.batch_size // jax.process_count(),
             FLAGS.image_level_augmentations,
             FLAGS.batch_level_augmentations,
-            image_size=image_size)
-    elif FLAGS.dataset == 'imagenet':
+            image_size=image_size,
+        )
+    elif FLAGS.dataset == "imagenet":
         imagenet_image_size = 224
         dataset_source = dataset_source_imagenet.Imagenet(
-            FLAGS.batch_size // jax.process_count(), imagenet_image_size,
-            FLAGS.image_level_augmentations)
+            FLAGS.batch_size // jax.process_count(),
+            imagenet_image_size,
+            FLAGS.image_level_augmentations,
+        )
     else:
-        raise ValueError('Dataset not recognized.')
+        raise ValueError("Dataset not recognized.")
 
-    if 'cifar' in FLAGS.dataset:
+    if "cifar" in FLAGS.dataset:
         if image_size is None:
             image_size = 32
         num_channels = 3
-        num_classes = 100 if FLAGS.dataset == 'cifar100' else 10
+        num_classes = 100 if FLAGS.dataset == "cifar100" else 10
         low_res = True
-    elif FLAGS.dataset == 'imagenet':
+    elif FLAGS.dataset == "imagenet":
         image_size = imagenet_image_size
         num_channels = 3
         num_classes = 1000
         low_res = False
     else:
-        raise ValueError('Dataset not recognized.')
+        raise ValueError("Dataset not recognized.")
 
     prng_key = jax.random.PRNGKey(FLAGS.run_seed)
     model_key, train_key = jax.random.split(prng_key)
 
-    if 'feature' in FLAGS.method:
-        FLAGS.model_name += '_feature'
+    if "feature" in FLAGS.method:
+        FLAGS.model_name += "_feature"
 
-    model, params, state = load_model.get_model(FLAGS.model_name, FLAGS.num_particles, local_batch_size,
-                                        image_size, num_classes, num_channels, low_res, model_key)
+    model, params, state = load_model.get_model(
+        FLAGS.model_name,
+        FLAGS.num_particles,
+        local_batch_size,
+        image_size,
+        num_classes,
+        num_channels,
+        low_res,
+        model_key,
+    )
 
     # Learning rate will be overwritten by the lr schedule, we set it to zero.
     optimizer = ensemble_training.create_optimizer(params, 0.0)
 
-    ensemble_training.train(model, optimizer, state, dataset_source, output_dir,
-                        FLAGS.num_epochs, train_key)
+    ensemble_training.train(
+        model, optimizer, state, dataset_source, output_dir, FLAGS.num_epochs, train_key
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     tf.enable_v2_behavior()
     jax.config.config_with_absl()
     app.run(main)

@@ -26,21 +26,23 @@ import tensorflow_datasets as tfds
 FLAGS = flags.FLAGS
 
 flags.DEFINE_bool(
-    'use_test_set', True,
-    'Whether to use the test set or not. If not, then 10% '
-    'observations will be set aside from the training set and '
-    'used as a validation set instead.')
+    "use_test_set",
+    True,
+    "Whether to use the test set or not. If not, then 10% "
+    "observations will be set aside from the training set and "
+    "used as a validation set instead.",
+)
 
-flags.DEFINE_string(
-    'data_dir', 'data', 'Directory where the datasets should be saved.')
+flags.DEFINE_string("data_dir", "data", "Directory where the datasets should be saved.")
 
 
 class DatasetSource(abc.ABC):
     """Parent for classes that load, preprocess and serve datasets.
 
-  Child class constructor should set a `num_training_obs` and a `batch_size`
-  attribute.
-  """
+    Child class constructor should set a `num_training_obs` and a `batch_size`
+    attribute.
+    """
+
     batch_size = ...  # type: int
     num_training_obs = ...  # type: int
 
@@ -48,14 +50,14 @@ class DatasetSource(abc.ABC):
     def get_train(self, use_augmentations: bool) -> tf.data.Dataset:
         """Returns the training set.
 
-    The training set will be batched, and the remainder of the batch will be
-    dropped (except if use_augmentation is False, in which case we don't drop
-    the remainder as we are most likely computing the accuracy on the train set.
+        The training set will be batched, and the remainder of the batch will be
+        dropped (except if use_augmentation is False, in which case we don't drop
+        the remainder as we are most likely computing the accuracy on the train set.
 
-    Args:
-      use_augmentations: Whether we should apply data augmentation (and possibly
-        cutout) or not.
-    """
+        Args:
+          use_augmentations: Whether we should apply data augmentation (and possibly
+            cutout) or not.
+        """
 
     @abc.abstractmethod
     def get_test(self) -> tf.data.Dataset:
@@ -71,8 +73,9 @@ def _resize(image: tf.Tensor, image_size: int, method: Optional[str] = None):
 class TFDSDatasetSource(DatasetSource):
     """Parent for classes that load, preprocess and serve TensorFlow datasets.
 
-  Small datasets like CIFAR, SVHN and Fashion MNIST subclass TFDSDatasetSource.
-  """
+    Small datasets like CIFAR, SVHN and Fashion MNIST subclass TFDSDatasetSource.
+    """
+
     batch_size = ...  # type: int
     num_training_obs = ...  # type: int
     _train_ds = ...  # type: tf.data.Dataset
@@ -86,53 +89,54 @@ class TFDSDatasetSource(DatasetSource):
     _image_size = ...  # type: Optional[int]
 
     def _apply_image_augmentations(
-            self, example: Dict[str, tf.Tensor]) -> Dict[str, tf.Tensor]:
-        if self._augmentation in ['autoaugment', 'aa-only']:
-            example = augmentation.auto_augmentation(example,
-                                                     self._dataset_name)
-        if self._augmentation in ['basic', 'autoaugment']:
+        self, example: Dict[str, tf.Tensor]
+    ) -> Dict[str, tf.Tensor]:
+        if self._augmentation in ["autoaugment", "aa-only"]:
+            example = augmentation.auto_augmentation(example, self._dataset_name)
+        if self._augmentation in ["basic", "autoaugment"]:
             example = augmentation.weak_image_augmentation(example)
         return example
 
-    def _preprocess_batch(
-            self, examples: Dict[str, tf.Tensor]) -> Dict[str, tf.Tensor]:
-        image, label = examples['image'], examples['label']
+    def _preprocess_batch(self, examples: Dict[str, tf.Tensor]) -> Dict[str, tf.Tensor]:
+        image, label = examples["image"], examples["label"]
         image = tf.cast(image, tf.float32) / 255.0
         image = (image - self._image_mean) / self._image_std
-        label = tf.one_hot(label,
-                           depth=self._num_classes,
-                           on_value=1.0,
-                           off_value=0.0)
-        return {'image': image, 'label': label}
+        label = tf.one_hot(label, depth=self._num_classes, on_value=1.0, off_value=0.0)
+        return {"image": image, "label": label}
 
     def get_train(self, use_augmentations: bool) -> tf.data.Dataset:
         """Returns the training set.
 
-    The training set will be batched, and the remainder of the batch will be
-    dropped (except if use_augmentations is False, in which case we don't drop
-    the remainder as we are most likely computing the accuracy on the train
-    set).
+        The training set will be batched, and the remainder of the batch will be
+        dropped (except if use_augmentations is False, in which case we don't drop
+        the remainder as we are most likely computing the accuracy on the train
+        set).
 
-    Args:
-      use_augmentations: Whether we should apply data augmentation (and possibly
-        cutout) or not.
-    """
+        Args:
+          use_augmentations: Whether we should apply data augmentation (and possibly
+            cutout) or not.
+        """
         ds = self._train_ds.shuffle(50000)
         if use_augmentations:
-            ds = ds.map(self._apply_image_augmentations,
-                        num_parallel_calls=tf.data.experimental.AUTOTUNE)
+            ds = ds.map(
+                self._apply_image_augmentations,
+                num_parallel_calls=tf.data.experimental.AUTOTUNE,
+            )
         # Don't drop remainder if we don't use augmentation, as we are evaluating.
         ds = ds.batch(self.batch_size, drop_remainder=use_augmentations)
-        ds = ds.map(self._preprocess_batch,
-                    num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        ds = ds.map(
+            self._preprocess_batch, num_parallel_calls=tf.data.experimental.AUTOTUNE
+        )
         if self._batch_level_augmentations and use_augmentations:
-            ds = ds.map(self._batch_level_augmentations,
-                        num_parallel_calls=tf.data.experimental.AUTOTUNE)
+            ds = ds.map(
+                self._batch_level_augmentations,
+                num_parallel_calls=tf.data.experimental.AUTOTUNE,
+            )
         if self._image_size:
 
             def resize(batch):
-                image = _resize(batch['image'], self._image_size)
-                return {'image': image, 'label': batch['label']}
+                image = _resize(batch["image"], self._image_size)
+                return {"image": image, "label": batch["label"]}
 
             ds = ds.map(resize)
         return ds
@@ -141,13 +145,13 @@ class TFDSDatasetSource(DatasetSource):
         """Returns the batched test set."""
         eval_batch_size = min(32, self.batch_size)
         ds = self._test_ds.batch(eval_batch_size).map(
-            self._preprocess_batch,
-            num_parallel_calls=tf.data.experimental.AUTOTUNE)
+            self._preprocess_batch, num_parallel_calls=tf.data.experimental.AUTOTUNE
+        )
         if self._image_size:
 
             def resize(batch):
-                image = _resize(batch['image'], self._image_size)
-                return {'image': image, 'label': batch['label']}
+                image = _resize(batch["image"], self._image_size)
+                return {"image": image, "label": batch["label"]}
 
             ds = ds.map(resize)
         return ds
@@ -156,163 +160,194 @@ class TFDSDatasetSource(DatasetSource):
 class CifarDatasetSource(TFDSDatasetSource):
     """Parent class for DatasetSource created from cifar10/cifar100 datasets.
 
-  The child class constructor must set _num_classes (integer, number of classes
-  in the dataset).
-  """
-    def __init__(self,
-                 batch_size: int,
-                 name: str,
-                 image_level_augmentations: str,
-                 batch_level_augmentations: str,
-                 image_size: Optional[int] = None):
+    The child class constructor must set _num_classes (integer, number of classes
+    in the dataset).
+    """
+
+    def __init__(
+        self,
+        batch_size: int,
+        name: str,
+        image_level_augmentations: str,
+        batch_level_augmentations: str,
+        image_size: Optional[int] = None,
+    ):
         """Instantiates the DatasetSource.
 
-    Args:
-      batch_size: Batch size to use for training and evaluation.
-      name: Name of the Tensorflow Dataset to use. Should be cifar10 or
-        cifar100.
-      image_level_augmentations: Augmentations to apply to the images. Should be
-        one of:
-        * none: No augmentations are applied.
-        * basic: Applies random crops and horizontal translations.
-        * autoaugment: Applies the best found policy for Cifar from the
-          AutoAugment paper.
-      batch_level_augmentations: Augmentations to apply at the batch level. Only
-        cutout is needed to get SOTA results. The following are implemented:
-        * none: No augmentations are applied.
-        * cutout: Applies cutout (https://arxiv.org/abs/1708.04552).
-        * mixup: Applies mixup (https://arxiv.org/pdf/1710.09412.pdf).
-        * mixcut: Applies mixup and cutout.
-      image_size: Size to which the image should be rescaled. If None, the
-        standard size is used (32x32).
-    """
-        assert name in ['cifar10', 'cifar100']
-        assert image_level_augmentations in ['none', 'basic', 'autoaugment']
-        assert batch_level_augmentations in ['none', 'cutout']
+        Args:
+          batch_size: Batch size to use for training and evaluation.
+          name: Name of the Tensorflow Dataset to use. Should be cifar10 or
+            cifar100.
+          image_level_augmentations: Augmentations to apply to the images. Should be
+            one of:
+            * none: No augmentations are applied.
+            * basic: Applies random crops and horizontal translations.
+            * autoaugment: Applies the best found policy for Cifar from the
+              AutoAugment paper.
+          batch_level_augmentations: Augmentations to apply at the batch level. Only
+            cutout is needed to get SOTA results. The following are implemented:
+            * none: No augmentations are applied.
+            * cutout: Applies cutout (https://arxiv.org/abs/1708.04552).
+            * mixup: Applies mixup (https://arxiv.org/pdf/1710.09412.pdf).
+            * mixcut: Applies mixup and cutout.
+          image_size: Size to which the image should be rescaled. If None, the
+            standard size is used (32x32).
+        """
+        assert name in ["cifar10", "cifar100"]
+        assert image_level_augmentations in ["none", "basic", "autoaugment"]
+        assert batch_level_augmentations in ["none", "cutout"]
         self._image_size = image_size
         self.batch_size = batch_size
         if FLAGS.use_test_set:
             self.num_training_obs = 50000
             train_split_size = self.num_training_obs // jax.process_count()
             start = jax.process_index() * train_split_size
-            train_split = 'train[{}:{}]'.format(start,
-                                                start + train_split_size)
-            self._train_ds = tfds.load(name, data_dir=FLAGS.data_dir, split=train_split).cache()
-            self._test_ds = tfds.load(name, data_dir=FLAGS.data_dir, split='test').cache()
-            logging.info('Used test set instead of validation set.')
+            train_split = "train[{}:{}]".format(start, start + train_split_size)
+            self._train_ds = tfds.load(
+                name, data_dir=FLAGS.data_dir, split=train_split
+            ).cache()
+            self._test_ds = tfds.load(
+                name, data_dir=FLAGS.data_dir, split="test"
+            ).cache()
+            logging.info("Used test set instead of validation set.")
         else:
             # Validation split not implemented for multi-host training.
             assert jax.process_count() == 1
-            self._train_ds = tfds.load(name, data_dir=FLAGS.data_dir, split='train[:45000]').cache()
-            self._test_ds = tfds.load(name, data_dir=FLAGS.data_dir, split='train[45000:]').cache()
+            self._train_ds = tfds.load(
+                name, data_dir=FLAGS.data_dir, split="train[:45000]"
+            ).cache()
+            self._test_ds = tfds.load(
+                name, data_dir=FLAGS.data_dir, split="train[45000:]"
+            ).cache()
             self.num_training_obs = 45000
-            logging.info('Used validation set instead of test set.')
+            logging.info("Used validation set instead of test set.")
         self._augmentation = image_level_augmentations
-        if batch_level_augmentations == 'cutout':
+        if batch_level_augmentations == "cutout":
             self._batch_level_augmentations = augmentation.cutout
-        elif batch_level_augmentations == 'mixup':
+        elif batch_level_augmentations == "mixup":
             self._batch_level_augmentations = augmentation.mixup
-        elif batch_level_augmentations == 'mixcut':
-            self._batch_level_augmentations = (
-                lambda x: augmentation.cutout(augmentation.mixup(x)))
+        elif batch_level_augmentations == "mixcut":
+            self._batch_level_augmentations = lambda x: augmentation.cutout(
+                augmentation.mixup(x)
+            )
         else:
             self._batch_level_augmentations = None
-        if name == 'cifar10':
-            self._image_mean = tf.constant(
-                [[[0.49139968, 0.48215841, 0.44653091]]])
-            self._image_std = tf.constant(
-                [[[0.24703223, 0.24348513, 0.26158784]]])
+        if name == "cifar10":
+            self._image_mean = tf.constant([[[0.49139968, 0.48215841, 0.44653091]]])
+            self._image_std = tf.constant([[[0.24703223, 0.24348513, 0.26158784]]])
         else:
-            self._image_mean = tf.constant(
-                [[[0.50707516, 0.48654887, 0.44091784]]])
-            self._image_std = tf.constant(
-                [[[0.26733429, 0.25643846, 0.27615047]]])
+            self._image_mean = tf.constant([[[0.50707516, 0.48654887, 0.44091784]]])
+            self._image_std = tf.constant([[[0.26733429, 0.25643846, 0.27615047]]])
         self._num_classes = None  # To define in child classes
 
 
 class Cifar10(CifarDatasetSource):
     """Cifar10 DatasetSource."""
-    def __init__(self,
-                 batch_size: int,
-                 image_level_augmentations: str,
-                 batch_level_augmentations: str,
-                 image_size: int = None):
+
+    def __init__(
+        self,
+        batch_size: int,
+        image_level_augmentations: str,
+        batch_level_augmentations: str,
+        image_size: int = None,
+    ):
         """See parent class for more information."""
-        super().__init__(batch_size, 'cifar10', image_level_augmentations,
-                         batch_level_augmentations, image_size)
+        super().__init__(
+            batch_size,
+            "cifar10",
+            image_level_augmentations,
+            batch_level_augmentations,
+            image_size,
+        )
         self._num_classes = 10
-        self._dataset_name = 'cifar10'
+        self._dataset_name = "cifar10"
 
 
 class Cifar100(CifarDatasetSource):
     """Cifar100 DatasetSource."""
-    def __init__(self,
-                 batch_size: int,
-                 image_level_augmentations: str,
-                 batch_level_augmentations: str,
-                 image_size: int = None):
+
+    def __init__(
+        self,
+        batch_size: int,
+        image_level_augmentations: str,
+        batch_level_augmentations: str,
+        image_size: int = None,
+    ):
         """See parent class for more information."""
-        super().__init__(batch_size, 'cifar100', image_level_augmentations,
-                         batch_level_augmentations, image_size)
+        super().__init__(
+            batch_size,
+            "cifar100",
+            image_level_augmentations,
+            batch_level_augmentations,
+            image_size,
+        )
         self._num_classes = 100
-        self._dataset_name = 'cifar100'
+        self._dataset_name = "cifar100"
 
 
 class Cifar10Corrupted(TFDSDatasetSource):
     """Parent class for DatasetSource created from cifar10/cifar100 datasets.
 
-  The child class constructor must set _num_classes (integer, number of classes
-  in the dataset).
-  """
-    def __init__(self,
-                 batch_size: int,
-                 corruption: str,
-                 severity: int,
-                 image_level_augmentations: str,
-                 batch_level_augmentations: str,
-                 image_size: Optional[int] = None):
-        assert image_level_augmentations == 'none'
-        assert batch_level_augmentations == 'none'
+    The child class constructor must set _num_classes (integer, number of classes
+    in the dataset).
+    """
+
+    def __init__(
+        self,
+        batch_size: int,
+        corruption: str,
+        severity: int,
+        image_level_augmentations: str,
+        batch_level_augmentations: str,
+        image_size: Optional[int] = None,
+    ):
+        assert image_level_augmentations == "none"
+        assert batch_level_augmentations == "none"
         self._image_size = image_size
         self.batch_size = batch_size
         self._train_ds = None
-        self._test_ds = tfds.load(f'cifar10_corrupted/{corruption}_{severity}', data_dir=FLAGS.data_dir, split='test').cache()
+        self._test_ds = tfds.load(
+            f"cifar10_corrupted/{corruption}_{severity}",
+            data_dir=FLAGS.data_dir,
+            split="test",
+        ).cache()
         self.num_training_obs = None
         self._augmentation = None
         self._batch_level_augmentations = None
-        self._image_mean = tf.constant(
-            [[[0.49139968, 0.48215841, 0.44653091]]])
-        self._image_std = tf.constant(
-            [[[0.24703223, 0.24348513, 0.26158784]]])
+        self._image_mean = tf.constant([[[0.49139968, 0.48215841, 0.44653091]]])
+        self._image_std = tf.constant([[[0.24703223, 0.24348513, 0.26158784]]])
         self._num_classes = 10  # To define in child classes
 
 
 class Cifar100Corrupted(TFDSDatasetSource):
     """Parent class for DatasetSource created from cifar10/cifar100 datasets.
 
-  The child class constructor must set _num_classes (integer, number of classes
-  in the dataset).
-  """
-    def __init__(self,
-                 batch_size: int,
-                 corruption: str,
-                 severity: int,
-                 image_level_augmentations: str,
-                 batch_level_augmentations: str,
-                 image_size: Optional[int] = None):
-        assert image_level_augmentations == 'none'
-        assert batch_level_augmentations == 'none'
+    The child class constructor must set _num_classes (integer, number of classes
+    in the dataset).
+    """
+
+    def __init__(
+        self,
+        batch_size: int,
+        corruption: str,
+        severity: int,
+        image_level_augmentations: str,
+        batch_level_augmentations: str,
+        image_size: Optional[int] = None,
+    ):
+        assert image_level_augmentations == "none"
+        assert batch_level_augmentations == "none"
         self._image_size = image_size
         self.batch_size = batch_size
         self._train_ds = None
-        self._test_ds = tfds.load(f'cifar100_corrupted/{corruption}_{severity}', data_dir=FLAGS.data_dir, split='test').cache()
+        self._test_ds = tfds.load(
+            f"cifar100_corrupted/{corruption}_{severity}",
+            data_dir=FLAGS.data_dir,
+            split="test",
+        ).cache()
         self.num_training_obs = None
         self._augmentation = None
         self._batch_level_augmentations = None
-        self._image_mean = tf.constant(
-            [[[0.50707516, 0.48654887, 0.44091784]]])
-        self._image_std = tf.constant(
-            [[[0.26733429, 0.25643846, 0.27615047]]])
+        self._image_mean = tf.constant([[[0.50707516, 0.48654887, 0.44091784]]])
+        self._image_std = tf.constant([[[0.26733429, 0.25643846, 0.27615047]]])
         self._num_classes = 100  # To define in child classes
-
-
