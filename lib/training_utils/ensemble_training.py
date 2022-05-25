@@ -22,7 +22,7 @@ from tensorflow.io import gfile
 
 import numpy as np
 
-from lib.optim import get_feature_wgd_gradient
+from lib.optim.feature_wgd import get_feature_wgd_gradient
 from lib.datasets import dataset_source as dataset_source_lib
 
 FLAGS = flags.FLAGS
@@ -45,7 +45,7 @@ flags.DEFINE_integer(
 	'training (for dropout for instance). Has no influence on '
 	'the dataset shuffling.')
 flags.DEFINE_bool('use_adam', False, 'If True, uses Adam instead of SGD')
-flags.DEFINE_enum('multistep', 'cosine', ['cosine', 'exponential', 'multistep'],
+flags.DEFINE_enum('lr_schedule', 'multistep', ['cosine', 'exponential', 'multistep'],
 				  'Learning rate schedule to use.')
 flags.DEFINE_enum('prior', 'cauchy', ['gauss', 'cauchy', 'uniform'], 
 				  'Feature prior distribution.')
@@ -459,14 +459,21 @@ def get_multistep_schedule(num_epochs: int, learning_rate: float,
 	  rate to use.
   """
 	steps_per_epoch = int(math.floor(num_training_obs / batch_size))
-	learning_rate_fn = lr_schedule.create_stepped_learning_rate_schedule(
-		learning_rate,
-		steps_per_epoch // jax.process_count(),
-		[
+	if 'cifar' in FLAGS.dataset:
+		step = [
 			[150, 0.1],
 			[225, 0.01],
 			[250, 0.001]
-		],
+		]
+	else:
+		step = [
+			[30, 0.1],
+			[60, 0.01]
+		]	
+	learning_rate_fn = lr_schedule.create_stepped_learning_rate_schedule(
+		learning_rate,
+		steps_per_epoch // jax.process_count(),
+		step,
 		warmup_length=0)
 	return learning_rate_fn
 
@@ -599,12 +606,7 @@ def train_step(
 			# We apply weight decay to all parameters, including bias and batch norm
 			# parameters.
 			weight_penalty_params = jax.tree_leaves(params)
-			if FLAGS.no_weight_decay_on_bn:
-				weight_l2 = sum([
-					jnp.sum(x**2) for x in weight_penalty_params if x.ndim > 1
-				])
-			else:
-				weight_l2 = sum([jnp.sum(x**2) for x in weight_penalty_params])
+			weight_l2 = sum([jnp.sum(x**2) for x in weight_penalty_params])
 			weight_penalty = l2_reg * 0.5 * weight_l2
 			loss = loss + weight_penalty
 			return loss, (new_state, logits)

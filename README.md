@@ -2,17 +2,20 @@
 Official Implementation in JAX and Flax.  
 arXiv: WIP
 
+## Installation
+WIP
+
 ## Training and Evaluation
 To train an ensemble of 10 WRN-16-4 using feature-WGD, run
 ```
 python train.py --num_particles 10 --model_name WideResnet16-4 \
---num_epochs 300 --method feature-wgd --dataset cifar100  \
+--num_epochs 300 --method feature_wgd --dataset cifar100  \
 --batch_size 128 --output_dir results
 ```
 To evaluate the above trained model, run
 ```
 python eval.py --num_particles 10 --model_name WideResnet16-4 \
---num_epochs 300 --method feature-wgd --dataset cifar100  \
+--num_epochs 300 --method feature_wgd --dataset cifar100  \
 --batch_size 128 --output_dir results
 ```
 

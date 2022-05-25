@@ -93,7 +93,7 @@ def main(_):
     output_dir_suffix = os.path.join(output_dir_suffix, FLAGS.method)
 
     if FLAGS.method == 'feature_wgd':
-        output_dir_suffix = os.path.join(output_dir_suffix, FLAGS.prior, 'scale_' + str(FLAGS.logit_decay))
+        output_dir_suffix = os.path.join(output_dir_suffix, FLAGS.prior, 'scale_' + str(FLAGS.prior_scale))
 
     output_dir = os.path.join(FLAGS.output_dir, output_dir_suffix)
 

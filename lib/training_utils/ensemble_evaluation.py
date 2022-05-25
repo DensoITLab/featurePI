@@ -442,8 +442,6 @@ def eval_on_dataset(params, state, dataset, pmapped_eval_step, n_splits=2, n_run
 		'loss': 0,
 		'brier_score': 0,
 		'ece': 0,
-		'tace': 0,
-		'temp': 0
 	}
 
 	for _ in range(n_runs):
@@ -459,7 +457,6 @@ def eval_on_dataset(params, state, dataset, pmapped_eval_step, n_splits=2, n_run
 				jnp.mean(cross_entropy_loss(test_softmax_logits, test_labels)),
 				'brier_score': jnp.mean(brier_score(test_softmax_logits, test_labels)),
 				'ece': ece(np.array(test_softmax_logits), np.array(test_labels)),
-				'temp': train_t
 			}
 
 			for k, v in test_metrics.items():

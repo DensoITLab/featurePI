@@ -56,7 +56,7 @@ class WideResNet(nn.Module):
     width_factor: int = 10
     dtype: Any = jnp.float32
     act: Callable = nn.relu
-    mode: Any = None
+    split: Any = None
     projection: bool = False
 
     def encode(self, x, train):
@@ -98,9 +98,9 @@ class WideResNet(nn.Module):
 
     @nn.compact
     def __call__(self, x, train):
-        if self.mode == 'encoder':
+        if self.split == 'encoder':
             x = self.encode(x, train)
-        elif self.mode == 'classifier':
+        elif self.split == 'classifier':
             x = self.classify(x, train)
         else:
             x = self.encode(x, train)

@@ -41,9 +41,6 @@ flags.DEFINE_integer('randaug_magnitude', 9,
                      'Magnitude of augmentations applied by RandAugment.')
 flags.DEFINE_float('imagenet_mixup_alpha', 0.0, 'If > 0, use mixup.')
 
-flags.DEFINE_string(
-    'data_dir', 'data', 'Directory where the datasets should be saved.')
-
 
 TRAIN_IMAGES = 1281167
 EVAL_IMAGES = 50000
