@@ -13,6 +13,8 @@ pip install -r requirements.txt
 ```
 
 ## Training and Evaluation
+This repository provides training and evaluation of ensemble image classification model using feature-WGD and Deep Ensembles.
+
 To train an ensemble of 10 WRN-16-4 on CIFAR-100 using feature-WGD, run
 ```
 python train.py --num_particles 10 --model_name WideResnet16-4 \
