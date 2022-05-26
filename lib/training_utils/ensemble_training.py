@@ -1,4 +1,4 @@
-# Copyright 2020 The Authors.
+# Copyright 2020 The SAM Authors.
 # Copyright 2022 Denso IT Lab., Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

@@ -17,7 +17,6 @@
 
 """Flax implementation of ResNet V1."""
 
-
 from functools import partial
 from typing import Any, Callable, Sequence, Tuple
 
