@@ -35,7 +35,7 @@ For CIFAR-10 and CIFAR-100, dataset is automatically downloaded in `data_dir` us
 To see a detailed list of all available flags, run `python train.py --help`.
 
 ## Citation
-```
+```BibTeX
 @inproceedings{yashima2022feature,
   author    = {Shingo Yashima, Teppei Suzuki, Kohta Ishikawa, Ikuro Sato and Rei Kawakami},
   title     = {Feature Space Particle Inference for Neural Network Ensembles},
