@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# Modified by Shingo Yashima from: https://github.com/google-research/sam/blob/main/sam_jax/imagenet_models/resnet.py
+
 """Flax implementation of ResNet V1."""
 
-# See issue #620.
-# pytype: disable=wrong-arg-count
 
 from functools import partial
 from typing import Any, Callable, Sequence, Tuple

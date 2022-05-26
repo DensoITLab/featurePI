@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# Modified by Shingo Yashima from: https://github.com/google-research/sam/blob/main/sam_jax/training_utils/flax_training.py
+
 """Functions to evaluate the ensemble networks for image classification tasks."""
 
 import functools

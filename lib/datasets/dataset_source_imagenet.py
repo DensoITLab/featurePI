@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Imagenet DatasetSource.
-
-Initially forked from:
-https://github.com/google/flax/blob/master/examples/imagenet/input_pipeline.py
-"""
+"""Imagenet DatasetSource."""
 
 from typing import Dict, Tuple
 
