@@ -642,7 +642,7 @@ def train_step(
         )(optimizer.target, state)
 
     else:
-        raise ValueError
+        raise ValueError("Wrong method: " + FLAGS.method)
 
     step = optimizer.state.step
 
@@ -767,7 +767,7 @@ def eval_step(params, state, batch, apply_fn):
         softmax_logits = jnp.mean(jax.vmap(forward)(params, state), axis=0)
 
     else:
-        raise ValueError
+        raise ValueError("Wrong method: " + FLAGS.method)
 
     # Because we don't have a guarantee that all batches contains the same number
     # of samples, we can't average the metrics per batch and then average the

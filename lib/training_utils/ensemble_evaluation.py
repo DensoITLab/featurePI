@@ -384,7 +384,7 @@ def eval_step(params, state, batch, apply_fn):
         softmax_logits = jnp.mean(each_softmax_logits, axis=0)
 
     else:
-        raise ValueError
+        raise ValueError("Wrong method: " + FLAGS.method)
 
     labels = batch["label"]
     # model_var = model_variance(each_softmax_logits)
