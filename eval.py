@@ -23,8 +23,8 @@ from lib.datasets import dataset_source as dataset_source_lib
 from lib.datasets import dataset_source_imagenet
 from lib.models import load_model
 from lib.training_utils import ensemble_evaluation
-import tensorflow.compat.v2 as tf
-from tensorflow.io import gfile
+import tensorflow as tf
+from tensorflow_io import gfile
 
 FLAGS = flags.FLAGS
 

@@ -18,7 +18,7 @@ from flax.training import checkpoints
 from flax.training import common_utils
 from flax.training import lr_schedule
 
-from tensorflow.io import gfile
+from tensorflow_io import gfile
 
 import numpy as np
 
