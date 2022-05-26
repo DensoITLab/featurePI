@@ -1,3 +1,18 @@
+# Copyright 2020 The Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Functions to evaluate the ensemble networks for image classification tasks."""
+
 import functools
 import os
 import time
@@ -58,19 +73,6 @@ flags.DEFINE_float("prior_scale", 0.005, "Scale of feature prior.")
 
 
 def local_replica_groups(inner_group_size: int) -> List[List[int]]:
-    """Constructs local nearest-neighbor rings given the JAX device assignment.
-
-    For inner_group_size=8, each inner group is a tray with replica order:
-
-    0/1 2/3
-    7/6 5/4
-
-    Args:
-          inner_group_size: Number of replica in each group.
-
-    Returns:
-          A list of replica id groups.
-    """
     world_size = jax.device_count()
     outer_group_size, ragged = divmod(world_size, inner_group_size)
     assert not ragged, "inner group size must evenly divide global device count"
@@ -118,20 +120,6 @@ def local_replica_groups(inner_group_size: int) -> List[List[int]]:
 def restore_checkpoint(
     optimizer: flax.optim.Optimizer, model_state: Any, directory: str
 ) -> Tuple[flax.optim.Optimizer, Any, int]:
-    """Restores a model and its state from a given checkpoint.
-
-    If several checkpoints are saved in the checkpoint directory, the latest one
-    will be loaded (based on the `epoch`).
-
-    Args:
-          optimizer: The optimizer containing the model that we are training.
-          model_state: Current state associated with the model.
-          directory: Directory where the checkpoints should be saved.
-
-    Returns:
-          The restored optimizer and model state, along with the number of epochs the
-            model was trained for.
-    """
     train_state = dict(optimizer=optimizer, model_state=model_state, epoch=0)
     restored_state = checkpoints.restore_checkpoint(directory, train_state)
     return (
@@ -144,17 +132,6 @@ def restore_checkpoint(
 def save_checkpoint(
     optimizer: flax.optim.Optimizer, model_state: Any, directory: str, epoch: int
 ):
-    """Saves a model and its state.
-
-    Removes a checkpoint if it already exists for a given epoch. For multi-host
-    training, only the first host will save the checkpoint.
-
-    Args:
-          optimizer: The optimizer containing the model that we are training.
-          model_state: Current state associated with the model.
-          directory: Directory where the checkpoints should be saved.
-          epoch: Number of epochs the model has been trained for.
-    """
     if jax.process_index() != 0:
         return
     # Sync across replicas before saving.
@@ -169,18 +146,6 @@ def save_checkpoint(
 def create_optimizer(
     params: Any, learning_rate: float, beta: float = 0.9
 ) -> flax.optim.Optimizer:
-    """Creates an optimizer.
-
-    Learning rate will be ignored when using a learning rate schedule.
-
-    Args:
-          model: The FLAX model to optimize.
-          learning_rate: Learning rate for the gradient descent.
-          beta: Momentum parameter.
-
-    Returns:
-          A SGD (or RMSProp) optimizer that targets the model.
-    """
     if FLAGS.use_adam:
         # We set beta2 and epsilon to the values used in the efficientnet paper.
         optimizer_def = optim.Adam(learning_rate=learning_rate)
@@ -274,35 +239,11 @@ def top_k_error_rate_metric(
 
 
 def tensorflow_to_numpy(xs):
-    """Converts a tree of tensorflow tensors to numpy arrays.
-
-    Args:
-          xs: A pytree (such as nested tuples, lists, and dicts) where the leaves are
-            tensorflow tensors.
-
-    Returns:
-          A pytree with the same structure as xs, where the leaves have been converted
-            to jax numpy ndarrays.
-    """
-    # Use _numpy() for zero-copy conversion between TF and NumPy.
-    xs = jax.tree_map(lambda x: x._numpy(), xs)  # pylint: disable=protected-access
+    xs = jax.tree_map(lambda x: x._numpy(), xs)
     return xs
 
 
 def shard_batch(xs):
-    """Shards a batch across all available replicas.
-
-    Assumes that the number of samples (first dimension of xs) is divisible by the
-    number of available replicas.
-
-    Args:
-          xs: A pytree (such as nested tuples, lists, and dicts) where the leaves are
-            numpy ndarrays.
-
-    Returns:
-          A pytree with the same structure as xs, where the leaves where added a
-            leading dimension representing the replica the tensor is on.
-    """
     local_device_count = jax.local_device_count()
 
     def _prepare(x):
@@ -312,34 +253,10 @@ def shard_batch(xs):
 
 
 def load_and_shard_tf_batch(xs):
-    """Converts to numpy arrays and distribute a tensorflow batch.
-
-    Args:
-          xs: A pytree (such as nested tuples, lists, and dicts) where the leaves are
-            tensorflow tensors.
-
-    Returns:
-          A pytree of numpy ndarrays with the same structure as xs, where the leaves
-            where added a leading dimension representing the replica the tensor is on.
-    """
     return shard_batch(tensorflow_to_numpy(xs))
 
 
 def eval_step(params, state, batch, apply_fn):
-    """Evaluates the model on a single batch.
-
-    Args:
-      model: The model to evaluate.
-      state: Current state associated with the model (contains the batch norm MA).
-      batch: Batch on which the model should be evaluated. Must have an `image`
-            and `label` key.
-
-    Returns:
-      A dictionary containing the loss and error rate on the batch. These metrics
-      are summed over the samples (and not averaged).
-    """
-
-    # Averages the batch norm moving averages.
     state = jax.lax.pmean(state, "batch")
 
     if FLAGS.method == "feature_wgd":
@@ -387,8 +304,6 @@ def eval_step(params, state, batch, apply_fn):
         raise ValueError("Wrong method: " + FLAGS.method)
 
     labels = batch["label"]
-    # model_var = model_variance(each_softmax_logits)
-    # return labels, softmax_logits, model_var
     return labels, softmax_logits
 
 
@@ -431,20 +346,6 @@ def temp_scaling(softmax_logits, labels):
 
 
 def eval_on_dataset(params, state, dataset, pmapped_eval_step, n_splits=2, n_runs=5):
-    """Evaluates the model on the whole dataset.
-
-    Args:
-      model: The model to evaluate.
-      state: Current state associated with the model (contains the batch norm MA).
-      dataset: Dataset on which the model should be evaluated. Should already
-            being batched.
-      pmapped_eval_step: A pmapped version of the `eval_step` function (see its
-            documentation for more details).
-
-    Returns:
-      A dictionary containing the loss and error rate on the batch. These metrics
-      are averaged over the samples.
-    """
     eval_labels, eval_softmax_logits = eval_forward(
         params, state, dataset, pmapped_eval_step
     )
@@ -489,16 +390,6 @@ def eval(
     dataset_source: dataset_source_lib.DatasetSource,
     training_dir: str,
 ):
-    """Trains the model.
-
-    Args:
-      optimizer: The optimizer targeting the model to train.
-      state: Current state associated with the model (contains the batch norm MA).
-      dataset_source: Container for the training dataset.
-      training_dir: Parent directory where the tensorboard logs and model
-            checkpoints should be saved.
-    num_epochs: Number of epochs for which we want to train the model.
-    """
     checkpoint_dir = os.path.join(training_dir, "checkpoints")
     results_dir = os.path.join(training_dir, "evaluation")
     summary_writer = tensorboard.SummaryWriter(results_dir)

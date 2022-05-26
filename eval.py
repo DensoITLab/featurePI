@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Trains a model on cifar10, cifar100, SVHN, F-MNIST or imagenet."""
+"""Evaluates an ensemble model on cifar10, cifar100 or imagenet."""
 
 import os
 

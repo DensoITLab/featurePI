@@ -1,3 +1,18 @@
+# Copyright 2020 The Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Functions to train the ensemble networks for image classification tasks."""
+
 import functools
 import math
 import os
@@ -86,19 +101,6 @@ flags.DEFINE_integer("evaluate_every", 1, "Evaluate on the test set every n epoc
 
 
 def local_replica_groups(inner_group_size: int) -> List[List[int]]:
-    """Constructs local nearest-neighbor rings given the JAX device assignment.
-
-    For inner_group_size=8, each inner group is a tray with replica order:
-
-    0/1 2/3
-    7/6 5/4
-
-    Args:
-          inner_group_size: Number of replica in each group.
-
-    Returns:
-          A list of replica id groups.
-    """
     world_size = jax.device_count()
     outer_group_size, ragged = divmod(world_size, inner_group_size)
     assert not ragged, "inner group size must evenly divide global device count"
@@ -146,20 +148,6 @@ def local_replica_groups(inner_group_size: int) -> List[List[int]]:
 def restore_checkpoint(
     optimizer: flax.optim.Optimizer, model_state: Any, directory: str
 ) -> Tuple[flax.optim.Optimizer, Any, int]:
-    """Restores a model and its state from a given checkpoint.
-
-    If several checkpoints are saved in the checkpoint directory, the latest one
-    will be loaded (based on the `epoch`).
-
-    Args:
-          optimizer: The optimizer containing the model that we are training.
-          model_state: Current state associated with the model.
-          directory: Directory where the checkpoints should be saved.
-
-    Returns:
-          The restored optimizer and model state, along with the number of epochs the
-            model was trained for.
-    """
     train_state = dict(optimizer=optimizer, model_state=model_state, epoch=0)
     restored_state = checkpoints.restore_checkpoint(directory, train_state)
     return (
@@ -172,17 +160,6 @@ def restore_checkpoint(
 def save_checkpoint(
     optimizer: flax.optim.Optimizer, model_state: Any, directory: str, epoch: int
 ):
-    """Saves a model and its state.
-
-    Removes a checkpoint if it already exists for a given epoch. For multi-host
-    training, only the first host will save the checkpoint.
-
-    Args:
-          optimizer: The optimizer containing the model that we are training.
-          model_state: Current state associated with the model.
-          directory: Directory where the checkpoints should be saved.
-          epoch: Number of epochs the model has been trained for.
-    """
     if jax.process_index() != 0:
         return
     # Sync across replicas before saving.
@@ -197,18 +174,6 @@ def save_checkpoint(
 def create_optimizer(
     params: Any, learning_rate: float, beta: float = 0.9
 ) -> flax.optim.Optimizer:
-    """Creates an optimizer.
-
-    Learning rate will be ignored when using a learning rate schedule.
-
-    Args:
-          model: The FLAX model to optimize.
-          learning_rate: Learning rate for the gradient descent.
-          beta: Momentum parameter.
-
-    Returns:
-          A SGD (or RMSProp) optimizer that targets the model.
-    """
     if FLAGS.use_adam:
         # We set beta2 and epsilon to the values used in the efficientnet paper.
         optimizer_def = optim.Adam(learning_rate=learning_rate)
@@ -223,17 +188,6 @@ def create_optimizer(
 def cross_entropy_loss_train(
     logits: jnp.ndarray, one_hot_labels: jnp.ndarray, mask: Optional[jnp.ndarray] = None
 ) -> jnp.ndarray:
-    """Returns the cross entropy loss between some logits and some labels.
-
-    Args:
-          logits: Output of the model.
-          one_hot_labels: One-hot encoded labels. Dimensions should match the logits.
-          mask: Mask to apply to the loss to ignore some samples (usually, the padding
-            of the batch). Array of ones and zeros.
-
-    Returns:
-          The cross entropy, averaged over the first dimension (samples).
-    """
     log_softmax_logits = jax.nn.log_softmax(logits)
     if mask is None:
         mask = jnp.ones([log_softmax_logits.shape[0]])
@@ -247,17 +201,6 @@ def cross_entropy_loss_eval(
     one_hot_labels: jnp.ndarray,
     mask: Optional[jnp.ndarray] = None,
 ) -> jnp.ndarray:
-    """Returns the cross entropy loss between some logits and some labels.
-
-    Args:
-          logits: Output of the model.
-          one_hot_labels: One-hot encoded labels. Dimensions should match the logits.
-          mask: Mask to apply to the loss to ignore some samples (usually, the padding
-            of the batch). Array of ones and zeros.
-
-    Returns:
-          The cross entropy, averaged over the first dimension (samples).
-    """
     log_softmax_logits = jnp.log(softmax_logits)
     if mask is None:
         mask = jnp.ones([log_softmax_logits.shape[0]])
@@ -271,17 +214,6 @@ def brier_score(
     one_hot_labels: jnp.ndarray,
     mask: Optional[jnp.ndarray] = None,
 ) -> jnp.ndarray:
-    """Returns the cross entropy loss between some logits and some labels.
-
-    Args:
-          logits: Output of the model.
-          one_hot_labels: One-hot encoded labels. Dimensions should match the logits.
-          mask: Mask to apply to the loss to ignore some samples (usually, the padding
-            of the batch). Array of ones and zeros.
-
-    Returns:
-          The brier score, averaged over the first dimension (samples).
-    """
     if mask is None:
         mask = jnp.ones([softmax_logits.shape[0]])
     mask = mask.reshape([softmax_logits.shape[0], 1])
@@ -294,17 +226,6 @@ def error_rate_metric(
     one_hot_labels: jnp.ndarray,
     mask: Optional[jnp.ndarray] = None,
 ) -> jnp.ndarray:
-    """Returns the error rate between some predictions and some labels.
-
-    Args:
-          logits: Output of the model.
-          one_hot_labels: One-hot encoded labels. Dimensions should match the logits.
-          mask: Mask to apply to the loss to ignore some samples (usually, the padding
-            of the batch). Array of ones and zeros.
-
-    Returns:
-          The error rate (1 - accuracy), averaged over the first dimension (samples).
-    """
     if mask is None:
         mask = jnp.ones([softmax_logits.shape[0]])
     mask = mask.reshape([softmax_logits.shape[0]])
@@ -321,18 +242,6 @@ def top_k_error_rate_metric(
     k: int = 5,
     mask: Optional[jnp.ndarray] = None,
 ) -> jnp.ndarray:
-    """Returns the top-K error rate between some predictions and some labels.
-
-    Args:
-          logits: Output of the model.
-          one_hot_labels: One-hot encoded labels. Dimensions should match the logits.
-          k: Number of class the model is allowed to predict for each example.
-          mask: Mask to apply to the loss to ignore some samples (usually, the padding
-            of the batch). Array of ones and zeros.
-
-    Returns:
-          The error rate (1 - accuracy), averaged over the first dimension (samples).
-    """
     if mask is None:
         mask = jnp.ones([softmax_logits.shape[0]])
     mask = mask.reshape([softmax_logits.shape[0]])
@@ -345,35 +254,11 @@ def top_k_error_rate_metric(
 
 
 def tensorflow_to_numpy(xs):
-    """Converts a tree of tensorflow tensors to numpy arrays.
-
-    Args:
-          xs: A pytree (such as nested tuples, lists, and dicts) where the leaves are
-            tensorflow tensors.
-
-    Returns:
-          A pytree with the same structure as xs, where the leaves have been converted
-            to jax numpy ndarrays.
-    """
-    # Use _numpy() for zero-copy conversion between TF and NumPy.
-    xs = jax.tree_map(lambda x: x._numpy(), xs)  # pylint: disable=protected-access
+    xs = jax.tree_map(lambda x: x._numpy(), xs)
     return xs
 
 
 def shard_batch(xs):
-    """Shards a batch across all available replicas.
-
-    Assumes that the number of samples (first dimension of xs) is divisible by the
-    number of available replicas.
-
-    Args:
-          xs: A pytree (such as nested tuples, lists, and dicts) where the leaves are
-            numpy ndarrays.
-
-    Returns:
-          A pytree with the same structure as xs, where the leaves where added a
-            leading dimension representing the replica the tensor is on.
-    """
     local_device_count = jax.local_device_count()
 
     def _prepare(x):
@@ -383,16 +268,6 @@ def shard_batch(xs):
 
 
 def load_and_shard_tf_batch(xs):
-    """Converts to numpy arrays and distribute a tensorflow batch.
-
-    Args:
-          xs: A pytree (such as nested tuples, lists, and dicts) where the leaves are
-            tensorflow tensors.
-
-    Returns:
-          A pytree of numpy ndarrays with the same structure as xs, where the leaves
-            where added a leading dimension representing the replica the tensor is on.
-    """
     return shard_batch(tensorflow_to_numpy(xs))
 
 
@@ -402,20 +277,6 @@ def create_exponential_learning_rate_schedule(
     lamba: float,
     warmup_epochs: int = 0,
 ) -> Callable[[int], float]:
-    """Creates a exponential learning rate schedule with optional warmup.
-
-    Args:
-          base_learning_rate: The base learning rate.
-          steps_per_epoch: The number of iterations per epoch.
-          lamba: Decay is v0 * exp(-t / lambda).
-          warmup_epochs: Number of warmup epoch. The learning rate will be modulated
-            by a linear function going from 0 initially to 1 after warmup_epochs
-            epochs.
-
-    Returns:
-          Function `f(step) -> lr` that computes the learning rate for a given step.
-    """
-
     def learning_rate_fn(step):
         t = step / steps_per_epoch
         return (
@@ -428,18 +289,6 @@ def create_exponential_learning_rate_schedule(
 def get_cosine_schedule(
     num_epochs: int, learning_rate: float, num_training_obs: int, batch_size: int
 ) -> Callable[[int], float]:
-    """Returns a cosine learning rate schedule, without warm up.
-
-    Args:
-          num_epochs: Number of epochs the model will be trained for.
-          learning_rate: Initial learning rate.
-          num_training_obs: Number of training observations.
-          batch_size: Total batch size (number of samples seen per gradient step).
-
-    Returns:
-          A function that takes as input the current step and returns the learning
-            rate to use.
-    """
     steps_per_epoch = int(math.floor(num_training_obs / batch_size))
     learning_rate_fn = lr_schedule.create_cosine_learning_rate_schedule(
         learning_rate,
@@ -453,18 +302,6 @@ def get_cosine_schedule(
 def get_exponential_schedule(
     num_epochs: int, learning_rate: float, num_training_obs: int, batch_size: int
 ) -> Callable[[int], float]:
-    """Returns an exponential learning rate schedule, without warm up.
-
-    Args:
-          num_epochs: Number of epochs the model will be trained for.
-          learning_rate: Initial learning rate.
-          num_training_obs: Number of training observations.
-          batch_size: Total batch size (number of samples seen per gradient step).
-
-    Returns:
-          A function that takes as input the current step and returns the learning
-            rate to use.
-    """
     steps_per_epoch = int(math.floor(num_training_obs / batch_size))
     # At the end of the training, lr should be 1.2% of original value
     # This mimic the behavior from the efficientnet paper.
@@ -479,18 +316,6 @@ def get_exponential_schedule(
 def get_multistep_schedule(
     num_epochs: int, learning_rate: float, num_training_obs: int, batch_size: int
 ) -> Callable[[int], float]:
-    """Returns a cosine learning rate schedule, without warm up.
-
-    Args:
-          num_epochs: Number of epochs the model will be trained for.
-          learning_rate: Initial learning rate.
-          num_training_obs: Number of training observations.
-          batch_size: Total batch size (number of samples seen per gradient step).
-
-    Returns:
-          A function that takes as input the current step and returns the learning
-            rate to use.
-    """
     steps_per_epoch = int(math.floor(num_training_obs / batch_size))
     if "cifar" in FLAGS.dataset:
         step = [[150, 0.1], [225, 0.01], [250, 0.001]]
@@ -503,25 +328,7 @@ def get_multistep_schedule(
 
 
 def global_norm(updates) -> jnp.ndarray:
-    """Returns the l2 norm of the input.
-
-    Args:
-          updates: A pytree of ndarrays representing the gradient.
-    """
     return jnp.sqrt(sum([jnp.sum(jnp.square(x)) for x in jax.tree_leaves(updates)]))
-
-
-def dual_vector(y: jnp.ndarray) -> jnp.ndarray:
-    """Returns the solution of max_x y^T x s.t. ||x||_2 <= 1.
-
-    Args:
-      y: A pytree of numpy ndarray, vector y in the equation above.
-    """
-    gradient_norm = jnp.sqrt(
-        sum([jnp.sum(jnp.square(e)) for e in jax.tree_util.tree_leaves(y)])
-    )
-    normalized_gradient = jax.tree_map(lambda x: x / gradient_norm, y)
-    return normalized_gradient
 
 
 def train_step(
@@ -534,38 +341,12 @@ def train_step(
     l2_reg: float,
     prior_scale: float,
 ) -> Tuple[flax.optim.Optimizer, Any, Dict[str, float], float]:
-    """Performs one gradient step.
-
-    Args:
-      optimizer: The optimizer targeting the model to train.
-      state: Current state associated with the model (contains the batch norm MA).
-      batch: Batch on which the gradient should be computed. Must have an `image`
-            and `label` key. Masks will not be used for training, so the batch is
-            expected to be full (with any potential remainder dropped).
-      prng_key: A PRNG key to use for stochasticity for this gradient step (e.g.
-            for sampling an eventual dropout mask).
-      learning_rate_fn: Function that takes the current step as input and return
-            the learning rate to use.
-      l2_reg: Weight decay parameter. The total weight decay penaly added to the
-            loss is equal to 0.5 * l2_reg * sum_i ||w_i||_2^2 where the sum is over
-            all trainable parameters of the model (bias and batch norm parameters
-            included).
-
-    Returns:
-      The updated optimizer (that includes the model), the updated state and
-            a dictionary containing the training loss and error rate on the batch.
-    """
 
     if FLAGS.method == "feature_wgd":
         encoder_apply_fn, classifier_apply_fn = apply_fn
         encoder_key, classifier_key = jax.random.split(prng_key)
 
         def encoder(params, state):
-            """Returns the model's loss, updated state and predictions.
-
-            Args:
-              model: The model that we are training.
-            """
             dropout_rng = jax.random.fold_in(encoder_key, jax.lax.axis_index("batch"))
             feature, new_state = encoder_apply_fn(
                 {"params": params, **state},
@@ -612,14 +393,6 @@ def train_step(
     elif FLAGS.method == "deep_ensembles":
 
         def forward_and_loss(params, state):
-            """Returns the model's loss, updated state and predictions.
-
-            Args:
-              model: The model that we are training.
-            """
-            # Bind the rng key to the device id (which is unique across hosts)
-            # Note: This is only used for multi-host training (i.e. multiple computers
-            # each with multiple accelerators).
             dropout_rng = jax.random.fold_in(prng_key, jax.lax.axis_index("batch"))
             logits, new_state = apply_fn(
                 {"params": params, **state},
@@ -654,8 +427,6 @@ def train_step(
     # Averages the batch norm moving averages.
     new_state = jax.lax.pmean(new_state, "batch")
 
-    # Gradient is clipped after being synchronized.
-    # grad = jax.vmap(clip_by_global_norm)(grad)
     new_optimizer = optimizer.apply_gradient(grad, learning_rate=lr)
 
     # Compute some norms to log on tensorboard.
@@ -708,18 +479,6 @@ _TrainStep = Callable[
 
 
 def eval_step(params, state, batch, apply_fn):
-    """Evaluates the model on a single batch.
-
-    Args:
-      model: The model to evaluate.
-      state: Current state associated with the model (contains the batch norm MA).
-      batch: Batch on which the model should be evaluated. Must have an `image`
-            and `label` key.
-
-    Returns:
-      A dictionary containing the loss and error rate on the batch. These metrics
-      are summed over the samples (and not averaged).
-    """
 
     # Averages the batch norm moving averages.
     state = jax.lax.pmean(state, "batch")
@@ -769,12 +528,6 @@ def eval_step(params, state, batch, apply_fn):
     else:
         raise ValueError("Wrong method: " + FLAGS.method)
 
-    # Because we don't have a guarantee that all batches contains the same number
-    # of samples, we can't average the metrics per batch and then average the
-    # resulting values. To compute the metrics correctly, we sum them (error rate
-    # and cross entropy returns means, thus we multiply by the number of samples),
-    # and finally sum across replicas. These sums will be divided by the total
-    # number of samples outside of this function.
     num_samples = (
         batch["image"].shape[0] if "mask" not in batch else batch["mask"].sum()
     )
@@ -799,20 +552,6 @@ def eval_step(params, state, batch, apply_fn):
 
 
 def eval_on_dataset(params, state, dataset, pmapped_eval_step):
-    """Evaluates the model on the whole dataset.
-
-    Args:
-      model: The model to evaluate.
-      state: Current state associated with the model (contains the batch norm MA).
-      dataset: Dataset on which the model should be evaluated. Should already
-            being batched.
-      pmapped_eval_step: A pmapped version of the `eval_step` function (see its
-            documentation for more details).
-
-    Returns:
-      A dictionary containing the loss and error rate on the batch. These metrics
-      are averaged over the samples.
-    """
     eval_metrics = []
     total_num_samples = 0
     all_host_psum = jax.pmap(lambda x: jax.lax.psum(x, "i"), "i")
@@ -850,25 +589,7 @@ def train_for_one_epoch(
     pmapped_train_step: _TrainStep,
     summary_writer: tensorboard.SummaryWriter,
 ) -> Tuple[flax.optim.Optimizer, Any]:
-    """Trains the model for one epoch.
 
-    Args:
-      dataset_source: Container for the training dataset.
-      optimizer: The optimizer targeting the model to train.
-      state: Current state associated with the model (contains the batch norm MA).
-      prng_key: A PRNG key to use for stochasticity (e.g. for sampling an eventual
-            dropout mask). Is not used for shuffling the dataset.
-      pmapped_train_step: A pmapped version of the `train_step` function (see its
-            documentation for more details).
-      pmapped_update_ema: Function to update the parameter moving average. Can be
-            None if we don't use EMA.
-      moving_averages: Parameters moving average if used.
-      summary_writer: A Tensorboard SummaryWriter to use to log metrics.
-
-    Returns:
-      The updated optimizer (with the associated updated model), state and PRNG
-            key.
-    """
     start_time = time.time()
     cnt = 0
     train_metrics = []
@@ -911,16 +632,6 @@ def train(
     num_epochs: int,
     prng_key: jnp.ndarray,
 ):
-    """Trains the model.
-
-    Args:
-      optimizer: The optimizer targeting the model to train.
-      state: Current state associated with the model (contains the batch norm MA).
-      dataset_source: Container for the training dataset.
-      training_dir: Parent directory where the tensorboard logs and model
-            checkpoints should be saved.
-    num_epochs: Number of epochs for which we want to train the model.
-    """
     checkpoint_dir = os.path.join(training_dir, "checkpoints")
     summary_writer = tensorboard.SummaryWriter(training_dir)
     if jax.process_index() != 0:  # Don't log if not first host.
