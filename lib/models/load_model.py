@@ -98,9 +98,9 @@ def get_model(
         model = partial(
             wideresnet.WideResNet28_10, num_classes=num_classes, low_res=low_res
         )
-    elif model_name.startswith("WideResnet40-2"):
+    elif model_name.startswith("WideResnet40-4"):
         model = partial(
-            wideresnet.WideResNet40_2, num_classes=num_classes, low_res=low_res
+            wideresnet.WideResNet40_4, num_classes=num_classes, low_res=low_res
         )
     else:
         raise ModelNameError("Unrecognized model name.")
