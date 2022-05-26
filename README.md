@@ -47,3 +47,7 @@ To see a detailed list of all available flags, run `python train.py --help`.
 
 ## Acknowledgement
 The code is based on the official implementation of [SAM: Sharpness-Aware Minimization for Efficiently Improving Generalization](https://github.com/google-research/sam).
+
+## License
+
+Our original license. Please check out [LICENSE](./LICENSE).
