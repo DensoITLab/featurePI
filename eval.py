@@ -137,7 +137,10 @@ def main(_):
     logging.info(info)
 
     if FLAGS.dataset == "cifar10":
-        image_size = None
+        image_size = 32
+        num_channels = 3
+        num_classes = 10
+        low_res = True
         dataset_source = dataset_source_lib.Cifar10(
             FLAGS.batch_size // jax.process_count(),
             FLAGS.image_level_augmentations,
@@ -145,7 +148,10 @@ def main(_):
             image_size=image_size,
         )
     elif FLAGS.dataset == "cifar100":
-        image_size = None
+        image_size = 32
+        num_channels = 3
+        num_classes = 100
+        low_res = True
         dataset_source = dataset_source_lib.Cifar100(
             FLAGS.batch_size // jax.process_count(),
             FLAGS.image_level_augmentations,
@@ -153,26 +159,15 @@ def main(_):
             image_size=image_size,
         )
     elif FLAGS.dataset == "imagenet":
-        imagenet_image_size = 224
-        dataset_source = dataset_source_imagenet.Imagenet(
-            FLAGS.batch_size // jax.process_count(),
-            imagenet_image_size,
-            FLAGS.image_level_augmentations,
-        )
-    else:
-        raise ValueError("Dataset not recognized.")
-
-    if "cifar" in FLAGS.dataset:
-        if image_size is None:
-            image_size = 32
-        num_channels = 3
-        num_classes = 100 if FLAGS.dataset == "cifar100" else 10
-        low_res = True
-    elif FLAGS.dataset == "imagenet":
-        image_size = imagenet_image_size
+        image_size = 224
         num_channels = 3
         num_classes = 1000
         low_res = False
+        dataset_source = dataset_source_imagenet.Imagenet(
+            FLAGS.batch_size // jax.process_count(),
+            image_size,
+            FLAGS.image_level_augmentations,
+        )
     else:
         raise ValueError("Dataset not recognized.")
 
