@@ -3,12 +3,17 @@ Official Implementation in JAX and Flax.
 arXiv: WIP
 
 ## Installation
+Requirements:
+- Linux (Ubuntu 16.04 or later) 
+- Python ≥ 3.9
+- CUDA ≥ 11.1 
+- cuDNN ≥ 8.2 
 ```
 pip install -r requirements.txt
 ```
 
 ## Training and Evaluation
-To train an ensemble of 10 WRN-16-4 using feature-WGD, run
+To train an ensemble of 10 WRN-16-4 on CIFAR-100 using feature-WGD, run
 ```
 python train.py --num_particles 10 --model_name WideResnet16-4 \
 --num_epochs 300 --method feature_wgd --dataset cifar100  \
@@ -23,6 +28,9 @@ python eval.py --num_particles 10 --model_name WideResnet16-4 \
 
 Training curves and evaluation results can be loaded using TensorBoard. TensorBoard events will be saved in `output_dir`, and their path will contain the configurations of the experiment.
 
+For CIFAR-10 and CIFAR-100, dataset is automatically downloaded in `data_dir` using Tensorflow Datasets. For ImageNet, manual download is required (see [instructions](https://www.tensorflow.org/datasets/catalog/imagenet2012)).
+
+To see a detailed list of all available flags, run `python train.py --help`.
 
 ## Citation
 WIP

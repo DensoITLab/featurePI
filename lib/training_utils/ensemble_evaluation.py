@@ -15,7 +15,7 @@ from flax import optim
 from flax.metrics import tensorboard
 from flax.training import checkpoints
 
-from tensorflow_io import gfile
+from tensorflow.io import gfile
 
 import numpy as np
 import scipy
