@@ -12,7 +12,7 @@ pip install -r requirements.txt
 ```
 
 ## Training and Evaluation
-This repository provides training and evaluation of ensemble image classification model using feature-WGD and Deep Ensembles.
+This repository provides training and evaluation of ensemble image classification model using feature-WGD and Deep Ensembles on CIFAR-10, CIFAR-100, and ImageNet.
 
 To train an ensemble of 10 WRN-16-4 on CIFAR-100 using feature-WGD, run
 ```bash
@@ -49,4 +49,4 @@ The code is based on the official implementation of [SAM: Sharpness-Aware Minimi
 
 ## License
 
-Our original license. Please check out [LICENSE](./LICENSE).
+Our original license. Please see [LICENSE](./LICENSE).
