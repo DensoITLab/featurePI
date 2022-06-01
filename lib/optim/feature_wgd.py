@@ -61,9 +61,9 @@ def get_projection(data):
 
 
 def get_feature_wgd_gradient(encoder, classifier, prior, num_particles, proj_dim):
-    def get_wgd_gradient(target_log_dist, num_particles):
-        target_log_dist_grads = jax.vmap(
-            jax.value_and_grad(target_log_dist, argnums=0, has_aux=True), (0, None)
+    def get_wgd_gradient(target_likelihood, num_particles):
+        target_likelihood_grads = jax.vmap(
+            jax.value_and_grad(target_likelihood, argnums=0, has_aux=True), (0, None)
         )
         target_prior_grads = jax.vmap(jax.value_and_grad(prior, argnums=0))
         kernel_val_grad = jax.value_and_grad(rbf, argnums=0)
@@ -92,16 +92,16 @@ def get_feature_wgd_gradient(encoder, classifier, prior, num_particles, proj_dim
 
         def wgd_gradient(params, state):
             _, treedef = tree_flatten(params)
-            (loss, (new_state, logits)), log_dist_grads = target_log_dist_grads(
+            (loss, (new_state, logits)), likelihood_grads = target_likelihood_grads(
                 params, state
             )
             _, prior_grads = target_prior_grads(params)
 
             new_state = jax.tree_map(lambda x: jnp.mean(x, axis=0), new_state)
             params = jax.lax.all_gather(params, "batch", axis=1)
-            log_dist_grads = jax.lax.all_gather(log_dist_grads, "batch", axis=1)
+            likelihood_grads = jax.lax.all_gather(likelihood_grads, "batch", axis=1)
 
-            proj_basis = get_projection(log_dist_grads)[:proj_dim]
+            proj_basis = get_projection(likelihood_grads)[:proj_dim]
             proj_params = jnp.einsum("pijc,qijc->pq", params, proj_basis)
 
             pairwise_dist_val_grads = treedef.flatten_up_to(
@@ -124,7 +124,7 @@ def get_feature_wgd_gradient(encoder, classifier, prior, num_particles, proj_dim
             grads = (
                 repulsive_grads
                 + prior_grads
-                + log_dist_grads[:, jax.lax.axis_index("batch")]
+                + likelihood_grads[:, jax.lax.axis_index("batch")]
             )
             grads = grads / grads.shape[1]
 
