@@ -36,7 +36,7 @@ To see a detailed list of all available flags, run `python train.py --help`.
 ## Citation
 ```BibTeX
 @inproceedings{yashima2022feature,
-  author    = {Shingo Yashima, Teppei Suzuki, Kohta Ishikawa, Ikuro Sato and Rei Kawakami},
+  author    = {Yashima, Shingo and Suzuki, Teppei and Ishikawa, Kohta and Sato, Ikuro and Kawakami, Rei},
   title     = {Feature Space Particle Inference for Neural Network Ensembles},
   booktitle = {International Conference on Machine Learning},
   publisher = {PMLR},
