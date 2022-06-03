@@ -1,5 +1,5 @@
 # Feature Space Particle Inference for Neural Network Ensembles (ICML2022)
-This repository contains experiments for the paper *[Feature Space Particle Inference for Neural Network Ensembles]()* by Shingo Yashima, Teppei Suzuki, Kohta Ishikawa, Ikuro Sato, and Rei Kawakami.
+This repository contains experiments for the paper *[Feature Space Particle Inference for Neural Network Ensembles](https://arxiv.org/abs/2206.00944)* by Shingo Yashima, Teppei Suzuki, Kohta Ishikawa, Ikuro Sato, and Rei Kawakami.
 
 ## Installation
 Requirements:
