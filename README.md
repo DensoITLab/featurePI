@@ -1,5 +1,5 @@
 # Feature Space Particle Inference for Neural Network Ensembles (ICML2022)
-This repository contains experiments for the paper *[Feature Space Particle Inference for Neural Network Ensembles](https://arxiv.org/abs/2206.00944)* by Shingo Yashima, Teppei Suzuki, Kohta Ishikawa, Ikuro Sato, and Rei Kawakami.
+This repository contains the official implementation in JAX of the paper *[Feature Space Particle Inference for Neural Network Ensembles](https://arxiv.org/abs/2206.00944)* by Shingo Yashima, Teppei Suzuki, Kohta Ishikawa, Ikuro Sato, and Rei Kawakami.
 
 ## Installation
 Requirements:
@@ -12,7 +12,7 @@ pip install -r requirements.txt
 ```
 
 ## Training and Evaluation
-This repository provides training and evaluation of ensemble image classification model using feature-WGD and Deep Ensembles on CIFAR-10, CIFAR-100, and ImageNet.
+This repository supports training and evaluation of ensemble image classification model using feature-WGD and Deep Ensembles on CIFAR-10, CIFAR-100, and ImageNet.
 
 To train an ensemble of 10 WRN-16-4 on CIFAR-100 using feature-WGD, run
 ```bash
