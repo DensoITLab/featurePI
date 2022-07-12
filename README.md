@@ -40,6 +40,7 @@ To see a detailed list of all available flags, run `python train.py --help`.
   title     = {Feature Space Particle Inference for Neural Network Ensembles},
   booktitle = {Proceedings of the 39th International Conference on Machine Learning},
   pages     = {25452--25468},
+  volume    = {162},
   publisher = {PMLR},
   year      = {2022},
 }
