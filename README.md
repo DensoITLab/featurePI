@@ -38,7 +38,8 @@ To see a detailed list of all available flags, run `python train.py --help`.
 @inproceedings{yashima2022feature,
   author    = {Yashima, Shingo and Suzuki, Teppei and Ishikawa, Kohta and Sato, Ikuro and Kawakami, Rei},
   title     = {Feature Space Particle Inference for Neural Network Ensembles},
-  booktitle = {International Conference on Machine Learning},
+  booktitle = {Proceedings of the 39th International Conference on Machine Learning},
+  pages     = {25452--25468}
   publisher = {PMLR},
   year      = {2022},
 }
